@@ -40,10 +40,10 @@
       "code": "6TWAGnrP2t",
       "icon": "https://cdn.discordapp.com/icons/883340327459635220/9f3bb1e4e0748c5a8a3dca3ee6b46366.png?size=256",
       "banner": null,
-      "memberCount": 3851,
-      "presenceCount": 268,
+      "memberCount": 3852,
+      "presenceCount": 250,
       "description": "ASDASDASDASDASD",
-      "lastSyncedAt": 1790430069768
+      "lastSyncedAt": 1790436479408
     },
     {
       "id": "partner_1790426778976",
@@ -54,10 +54,10 @@
       "code": "usa",
       "icon": "https://cdn.discordapp.com/icons/267345360203153430/ab4b7029c630b007dc2f7248b2679a9a.png?size=256",
       "banner": "https://cdn.discordapp.com/banners/267345360203153430/f94219fd3fbddfdabaa3469f417452bf.png?size=1024",
-      "memberCount": 39755,
-      "presenceCount": 3179,
+      "memberCount": 39751,
+      "presenceCount": 3469,
       "description": "A community based around the group United States Armed Forces [USAF] on ROBLOX",
-      "lastSyncedAt": 1790430072333
+      "lastSyncedAt": 1790436479848
     }
   ],
   "socials": {
@@ -71,5 +71,5 @@
   "musicCover": "",
   "musicStartTime": 25,
   "musicVolume": 30,
-  "siteViews": 70
+  "siteViews": 71
 }
