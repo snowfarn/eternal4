@@ -119,6 +119,7 @@ export const authOptions = {
     maxAge: 3600, // 1 hour
   },
   secret: process.env.NEXTAUTH_SECRET || "super-secret-gang-key-12345",
+  trustHost: true,
 };
 
 const handler = NextAuth(authOptions);
