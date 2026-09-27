@@ -4,6 +4,9 @@ import { notFound } from 'next/navigation';
 import { ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Dynamic OpenGraph & Discord Embed Generation
 export async function generateMetadata({ params }) {
   const resolvedParams = await params;

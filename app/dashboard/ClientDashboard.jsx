@@ -50,6 +50,7 @@ import {
   Users
 } from "lucide-react";
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { applyToGang, updateMemberBio, checkSlug } from '@/lib/actions';
@@ -117,6 +118,7 @@ function formatSeconds(sec) {
 }
 
 export default function ClientDashboard({ initialStatus, initialMemberData }) {
+  const router = useRouter();
   const { data: session, status } = useSession();
   const { t, lang, toggleLang } = useLanguage();
   const [memberStatus, setMemberStatus] = useState(initialStatus);
@@ -234,7 +236,8 @@ export default function ClientDashboard({ initialStatus, initialMemberData }) {
             discordBadge: d.badge || '',
             discordBadgeIcon: d.badgeIcon || '',
             avatarDecoration: d.avatarDecoration || '',
-            avatar: prev.avatar && prev.avatar !== session?.user?.image && prev.avatar.startsWith('/uploads/') ? prev.avatar : (d.avatar || prev.avatar),
+            // Keep user's custom avatar if they uploaded or set one; only use discord avatar if no avatar exists yet
+            avatar: prev.avatar || d.avatar || '',
           }));
         }
       })
@@ -299,7 +302,7 @@ export default function ClientDashboard({ initialStatus, initialMemberData }) {
           discordStatusText: d.statusText && d.statusText !== d.username ? d.statusText : prev.discordStatusText,
           discordBadge: d.badge || '',
           discordBadgeIcon: d.badgeIcon || '',
-          avatar: prev.avatar && prev.avatar !== session?.user?.image && prev.avatar.startsWith('/uploads/') ? prev.avatar : (d.avatar || prev.avatar),
+          avatar: prev.avatar || d.avatar || '',
           avatarDecoration: d.avatarDecoration || '',
         }));
         showToast(lang === 'th' 
@@ -602,6 +605,7 @@ export default function ClientDashboard({ initialStatus, initialMemberData }) {
       const res = await updateMemberBio(session.user.id, sanitizedData);
       if (res.success) {
         showToast(lang === 'th' ? 'บันทึกการตั้งค่าประวัติส่วนตัวเรียบร้อยแล้ว' : 'Bio profile updated successfully');
+        router.refresh();
       } else {
         showToast(res.message || (lang === 'th' ? 'เกิดข้อผิดพลาดในการบันทึก' : 'Error updating profile'), true);
       }

@@ -4,6 +4,9 @@ import { getMembers, getApplications } from "@/lib/data";
 import { applyToGang } from "@/lib/actions";
 import ClientDashboard from "./ClientDashboard";
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
 
