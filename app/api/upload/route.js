@@ -23,10 +23,46 @@ export async function POST(request) {
 
     const mimeType = file.type || 'image/png';
     let fileUrl = null;
+
+    // 1. If Supabase is connected, upload directly to Supabase Storage Bucket ('uploads')
+    const { getSupabase } = await import('@/lib/supabase');
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const ext = path.extname(file.name) || '';
+        const baseName = path.basename(file.name, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
+        const fileName = `${Date.now()}_${baseName}${ext}`;
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('uploads')
+          .upload(fileName, buffer, {
+            contentType: mimeType,
+            upsert: true
+          });
+
+        if (!uploadError && uploadData) {
+          const { data: pubData } = supabase.storage.from('uploads').getPublicUrl(fileName);
+          fileUrl = pubData.publicUrl;
+
+          // If there was an old file hosted in Supabase uploads bucket, clean it up
+          if (oldUrl && typeof oldUrl === 'string' && oldUrl.includes('/storage/v1/object/public/uploads/')) {
+            const oldFileName = oldUrl.split('/storage/v1/object/public/uploads/')[1]?.split('?')[0];
+            if (oldFileName) {
+              supabase.storage.from('uploads').remove([oldFileName]).catch(() => {});
+            }
+          }
+        } else {
+          console.warn('[Supabase Storage] Upload failed, falling back:', uploadError?.message);
+        }
+      } catch (sbErr) {
+        console.warn('[Supabase Storage] Exception:', sbErr.message);
+      }
+    }
+
     const isVercel = !!process.env.VERCEL;
 
-    // In local dev, save to public/uploads
-    if (!isVercel) {
+    // 2. In local dev without Supabase, save to public/uploads
+    if (!fileUrl && !isVercel) {
       try {
         const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
         if (!fs.existsSync(uploadsDir)) {
@@ -53,7 +89,7 @@ export async function POST(request) {
       }
     }
 
-    // On Vercel (read-only filesystem) or fallback: use Base64 Data URL
+    // 3. Fallback: use Base64 Data URL if neither storage is available
     if (!fileUrl) {
       fileUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
     }
