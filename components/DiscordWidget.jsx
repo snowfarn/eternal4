@@ -8,6 +8,7 @@ export default function DiscordWidget({
   customUsername, 
   customStatusText, 
   customBadge, 
+  customBadgeIcon,
   avatarFallback, 
   avatarDecoration, 
   showDecoration = true, 
@@ -115,13 +116,15 @@ export default function DiscordWidget({
     : (validSavedText || statusLabelMap[discordStatus]);
 
   // Clan badge: Prioritize live primary_guild tag from Discord
-  const primaryGuild = lanyardData?.discord_user?.primary_guild;
-  const clanBadgeIcon = primaryGuild?.badge && primaryGuild?.identity_guild_id
+  const primaryGuild = lanyardData?.discord_user?.primary_guild || lanyardData?.discord_user?.clan;
+  const clanBadgeIcon = (hasLanyard && primaryGuild?.badge && primaryGuild?.identity_guild_id)
     ? `https://cdn.discordapp.com/clan-badges/${primaryGuild.identity_guild_id}/${primaryGuild.badge}.png`
-    : 'https://cdn.discordapp.com/clan-badges/1397489019289469010/8f472817508b16b79411158f14b393f1.png';
+    : (customBadgeIcon || (primaryGuild?.badge && primaryGuild?.identity_guild_id 
+        ? `https://cdn.discordapp.com/clan-badges/${primaryGuild.identity_guild_id}/${primaryGuild.badge}.png` 
+        : 'https://cdn.discordapp.com/clan-badges/1396736573445374082/09f17237050714f397357bc1465537e2.png'));
 
   const badgeText = hasLanyard
-    ? (primaryGuild?.tag || (customBadge && customBadge !== 'REAL' && customBadge !== 'NOPE' ? customBadge : ''))
+    ? (primaryGuild?.tag || (customBadge && customBadge !== 'NOPE' ? customBadge : ''))
     : ((customBadge && customBadge !== 'NOPE') ? customBadge : (primaryGuild?.tag || ''));
 
   // Avatar decoration: Prioritize live Discord decoration or clear if unequipped

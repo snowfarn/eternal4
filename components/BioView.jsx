@@ -170,12 +170,14 @@ export default function BioView({
               const liveDeco = user.avatar_decoration_data?.asset
                 ? `https://cdn.discordapp.com/avatar-decoration-presets/${user.avatar_decoration_data.asset}.png?size=256&passthrough=true`
                 : '';
-              const liveTag = user.primary_guild?.tag || '';
+              const liveTag = user.primary_guild?.tag || user.clan?.tag || '';
+              const liveStatus = json.data.activities?.find(a => a.type === 4)?.state || '';
 
-              // If Discord decoration or clan tag changed, auto-sync to server in the background
+              // If Discord decoration, clan tag, or custom status changed/detected, auto-sync to server in the background
               if (
-                liveDeco !== (member.avatarDecoration || '') ||
-                liveTag !== (member.discordBadge || '')
+                (liveDeco && liveDeco !== (member.avatarDecoration || '')) ||
+                (liveTag && liveTag !== (member.discordBadge || '')) ||
+                (liveStatus && liveStatus !== (member.discordStatusText || ''))
               ) {
                 fetch('/api/discord/sync', {
                   method: 'POST',
@@ -455,6 +457,7 @@ export default function BioView({
                   customUsername={member.discordUsername}
                   customStatusText={member.discordStatusText}
                   customBadge={liveClanTag}
+                  customBadgeIcon={liveClanBadgeIcon || member.discordBadgeIcon}
                   avatarFallback={liveAvatar}
                   avatarDecoration={liveAvatarDecoration}
                   showDecoration={showBottomDecoration}
@@ -484,6 +487,7 @@ export default function BioView({
                   customUsername={member.discordUsername}
                   customStatusText={member.discordStatusText}
                   customBadge={liveClanTag}
+                  customBadgeIcon={liveClanBadgeIcon || member.discordBadgeIcon}
                   avatarFallback={liveAvatar}
                   avatarDecoration={liveAvatarDecoration}
                   showDecoration={showBottomDecoration}
@@ -534,6 +538,7 @@ export default function BioView({
                 customUsername={member.discordUsername}
                 customStatusText={member.discordStatusText}
                 customBadge={liveClanTag}
+                customBadgeIcon={liveClanBadgeIcon || member.discordBadgeIcon}
                 avatarFallback={liveAvatar}
                 avatarDecoration={liveAvatarDecoration}
                 showDecoration={showBottomDecoration}
@@ -552,6 +557,7 @@ export default function BioView({
               customUsername={member.discordUsername}
               customStatusText={member.discordStatusText}
               customBadge={liveClanTag}
+              customBadgeIcon={liveClanBadgeIcon || member.discordBadgeIcon}
               avatarFallback={liveAvatar}
               avatarDecoration={liveAvatarDecoration}
               showDecoration={showBottomDecoration}

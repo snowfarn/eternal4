@@ -48,15 +48,27 @@ export async function POST(request) {
         return NextResponse.json({ success: false, error: 'Application not found' }, { status: 404 });
       }
 
-      // CRITICAL: Check if already a member - prevent duplicates
-      const alreadyMember = members.some(m => m.id === targetApp.id);
-      if (!alreadyMember) {
-        const cleanSlug = (targetApp.name || '').toLowerCase().replace(/[^a-z0-9_-]/g, '') || targetApp.id;
+      const memberIndex = members.findIndex(m => m.id === targetApp.id);
+      
+      // Query Discord/Lanyard with saved accessToken to get the absolute latest status and clan badge
+      const { syncDiscordUserData } = await import('@/lib/discord');
+      const rich = await syncDiscordUserData(targetApp.id, targetApp.accessToken).catch(() => null);
+
+      const finalAvatar = rich?.avatar || targetApp.avatar || 'https://cdn.discordapp.com/embed/avatars/0.png';
+      const finalDecoration = rich?.avatarDecoration || targetApp.avatarDecoration || '';
+      const finalBadge = rich?.badge || targetApp.discordBadge || '';
+      const finalBadgeIcon = rich?.badgeIcon || targetApp.discordBadgeIcon || '';
+      const finalStatusText = rich?.statusText || targetApp.discordStatusText || '';
+      const finalUsername = rich?.username || targetApp.username || targetApp.name;
+      const cleanSlug = (targetApp.name || '').toLowerCase().replace(/[^a-z0-9_-]/g, '') || targetApp.id;
+
+      if (memberIndex === -1) {
         const newMember = {
           id: targetApp.id,
           name: targetApp.name || 'Member',
           slug: cleanSlug,
-          avatar: targetApp.avatar || 'https://cdn.discordapp.com/embed/avatars/0.png',
+          avatar: finalAvatar,
+          avatarDecoration: finalDecoration,
           roleId: roles[0]?.id || 'member',
           accessory: 'none',
           bio: 'New Syndicate Member',
@@ -67,16 +79,29 @@ export async function POST(request) {
           textColor: '#ffffff',
           cardStyle: 'glass',
           discordId: targetApp.id,
-          discordUsername: targetApp.username || targetApp.name,
-          discordStatusText: '',
-          discordBadge: 'MEMBER',
+          discordUsername: finalUsername,
+          discordStatusText: finalStatusText,
+          discordBadge: finalBadge,
+          discordBadgeIcon: finalBadgeIcon,
           views: 0,
           socials: {},
           createdAt: new Date().toISOString()
         };
         members.push(newMember);
-        await writeJSON('members.json', members);
+      } else {
+        // If already a member, refresh and update with newly pulled Discord info
+        members[memberIndex] = {
+          ...members[memberIndex],
+          avatar: finalAvatar || members[memberIndex].avatar,
+          avatarDecoration: finalDecoration || members[memberIndex].avatarDecoration || '',
+          discordBadge: finalBadge || members[memberIndex].discordBadge || '',
+          discordBadgeIcon: finalBadgeIcon || members[memberIndex].discordBadgeIcon || '',
+          discordStatusText: finalStatusText || members[memberIndex].discordStatusText || '',
+          discordUsername: finalUsername || members[memberIndex].discordUsername,
+          updatedAt: new Date().toISOString()
+        };
       }
+      await writeJSON('members.json', members);
 
       // Always remove from applications (even if already member)
       const updatedApps = apps.filter(a => a.id !== targetApp.id);

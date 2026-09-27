@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
 import { readJSON, writeJSON } from "@/lib/data";
+import { syncDiscordUserData } from "@/lib/discord";
 
 export const authOptions = {
   providers: [
@@ -21,43 +22,64 @@ export const authOptions = {
         try {
           const discordId = profile?.id || user?.id;
           const members = (await readJSON('members.json')) || [];
-          const isMember = members.some(m => m.id === discordId);
+          const memberIdx = members.findIndex(m => m.id === discordId);
           
-          // Skip entirely if already a member
-          if (isMember) {
-            console.log('[signIn] Already a member, skipping:', discordId);
+          // Pull rich details from Discord API + Profile + Lanyard
+          const rich = await syncDiscordUserData(discordId, account?.access_token, profile).catch(() => null);
+
+          // If already a member, auto-sync their Discord avatar, decoration, badge, and status immediately
+          if (memberIdx !== -1) {
+            console.log('[signIn] Existing member logged in, auto-updating Discord profile:', discordId);
+            if (rich) {
+              members[memberIdx] = {
+                ...members[memberIdx],
+                avatar: rich.avatar || members[memberIdx].avatar,
+                avatarDecoration: rich.avatarDecoration || members[memberIdx].avatarDecoration || '',
+                discordUsername: rich.username || members[memberIdx].discordUsername,
+                discordBadge: rich.badge || members[memberIdx].discordBadge || '',
+                discordBadgeIcon: rich.badgeIcon || members[memberIdx].discordBadgeIcon || '',
+                discordStatusText: rich.statusText !== undefined && rich.statusText !== '' ? rich.statusText : (members[memberIdx].discordStatusText || ''),
+                updatedAt: new Date().toISOString()
+              };
+              await writeJSON('members.json', members);
+            }
             return true;
           }
 
           const apps = (await readJSON('applications.json')) || [];
-          
+
           let avatarUrl = user?.image || 'https://cdn.discordapp.com/embed/avatars/0.png';
           if (profile?.avatar) {
             const ext = profile.avatar.startsWith('a_') ? 'gif' : 'png';
             avatarUrl = `https://cdn.discordapp.com/avatars/${discordId}/${profile.avatar}.${ext}?size=256`;
           }
-          const displayName = profile?.global_name || profile?.username || user?.name || 'Discord User';
-          const username = profile?.username || user?.name || '';
+          if (rich?.avatar) avatarUrl = rich.avatar;
+
+          const displayName = profile?.global_name || rich?.displayName || profile?.username || user?.name || 'Discord User';
+          const username = profile?.username || rich?.username || user?.name || '';
+
+          const appRecord = {
+            id: discordId,
+            name: displayName,
+            username: username,
+            avatar: avatarUrl,
+            avatarDecoration: rich?.avatarDecoration || '',
+            discordBadge: rich?.badge || '',
+            discordBadgeIcon: rich?.badgeIcon || '',
+            discordStatusText: rich?.statusText || '',
+            accessToken: account?.access_token || '',
+            appliedAt: new Date().toISOString()
+          };
 
           const existingIdx = apps.findIndex(a => a.id === discordId);
           if (existingIdx !== -1) {
-            // Already has application — update info only
             apps[existingIdx] = {
               ...apps[existingIdx],
-              name: displayName,
-              username,
-              avatar: avatarUrl,
+              ...appRecord,
               updatedAt: new Date().toISOString()
             };
           } else {
-            // Brand new application
-            apps.push({
-              id: discordId,
-              name: displayName,
-              username,
-              avatar: avatarUrl,
-              appliedAt: new Date().toISOString()
-            });
+            apps.push(appRecord);
           }
           await writeJSON('applications.json', apps);
         } catch (e) {
@@ -84,6 +106,7 @@ export const authOptions = {
         session.user.username = token.username;
         session.user.global_name = token.global_name;
         session.accessToken = token.accessToken;
+        session.user.accessToken = token.accessToken;
       }
       return session;
     }

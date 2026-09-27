@@ -81,17 +81,18 @@ async function handleSync(requestedUserId) {
     }
 
     // 2. If access token available from session, check Discord @me & Guilds API
-    if (session?.user?.accessToken) {
+    const accessToken = session?.accessToken || session?.user?.accessToken;
+    if (accessToken) {
       try {
         // Fetch current authenticated user to get direct avatar & avatar decoration
-        const meRes = await fetch('https://discord.com/api/users/@me', {
-          headers: { Authorization: `Bearer ${session.user.accessToken}` },
+        const meRes = await fetch('https://discord.com/api/v10/users/@me', {
+          headers: { Authorization: `Bearer ${accessToken}` },
           cache: 'no-store'
         });
         if (meRes.ok) {
           const meUser = await meRes.json();
           if (meUser) {
-            if (meUser.avatar_decoration_data?.asset) {
+            if (meUser.avatar_decoration_data?.asset && !syncedData.avatarDecoration) {
               syncedData.avatarDecoration = `https://cdn.discordapp.com/avatar-decoration-presets/${meUser.avatar_decoration_data.asset}.png?size=256&passthrough=true`;
             }
             if (meUser.avatar && (!syncedData.avatar || syncedData.avatar.includes('embed/avatars'))) {
@@ -102,6 +103,13 @@ async function handleSync(requestedUserId) {
               const ext = meUser.banner.startsWith('a_') ? 'gif' : 'png';
               syncedData.banner = `https://cdn.discordapp.com/banners/${meUser.id}/${meUser.banner}.${ext}?size=1024`;
             }
+            const clan = meUser.clan || meUser.primary_guild;
+            if (clan?.tag && !syncedData.badge) {
+              syncedData.badge = clan.tag;
+              if (clan.badge && clan.identity_guild_id) {
+                syncedData.badgeIcon = `https://cdn.discordapp.com/clan-badges/${clan.identity_guild_id}/${clan.badge}.png`;
+              }
+            }
           }
         }
       } catch (e) {
@@ -109,8 +117,8 @@ async function handleSync(requestedUserId) {
       }
 
       try {
-        const guildRes = await fetch('https://discord.com/api/users/@me/guilds', {
-          headers: { Authorization: `Bearer ${session.user.accessToken}` },
+        const guildRes = await fetch('https://discord.com/api/v10/users/@me/guilds', {
+          headers: { Authorization: `Bearer ${accessToken}` },
           cache: 'no-store'
         });
         if (guildRes.ok) {
@@ -124,10 +132,11 @@ async function handleSync(requestedUserId) {
             }));
             // If badge is still empty, use user's first guild name or acronym
             if (!syncedData.badge && guilds.length > 0) {
-              syncedData.badge = guilds[0].name.substring(0, 8).toUpperCase();
-            }
-            if (!syncedData.badgeIcon && guilds.length > 0 && guilds[0].icon) {
-              syncedData.badgeIcon = `https://cdn.discordapp.com/icons/${guilds[0].id}/${guilds[0].icon}.png`;
+              const guildWithIcon = guilds.find(g => g.icon) || guilds[0];
+              syncedData.badge = guildWithIcon.name.substring(0, 8).toUpperCase();
+              if (guildWithIcon.icon) {
+                syncedData.badgeIcon = `https://cdn.discordapp.com/icons/${guildWithIcon.id}/${guildWithIcon.icon}.png`;
+              }
             }
           }
         }
@@ -144,11 +153,11 @@ async function handleSync(requestedUserId) {
         members[mIdx] = {
           ...members[mIdx],
           avatar: syncedData.avatar || members[mIdx].avatar,
-          avatarDecoration: syncedData.avatarDecoration || '',
+          avatarDecoration: syncedData.avatarDecoration || members[mIdx].avatarDecoration || '',
           discordUsername: syncedData.username || members[mIdx].discordUsername,
-          discordBadge: syncedData.badge || '',
-          discordBadgeIcon: syncedData.badgeIcon || '',
-          discordStatusText: syncedData.statusText !== undefined ? syncedData.statusText : (members[mIdx].discordStatusText || ''),
+          discordBadge: syncedData.badge || members[mIdx].discordBadge || '',
+          discordBadgeIcon: syncedData.badgeIcon || members[mIdx].discordBadgeIcon || '',
+          discordStatusText: (syncedData.statusText !== undefined && syncedData.statusText !== '') ? syncedData.statusText : (members[mIdx].discordStatusText || ''),
           updatedAt: new Date().toISOString()
         };
         await writeJSON('members.json', members);
