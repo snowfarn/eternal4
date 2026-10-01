@@ -64,7 +64,7 @@ export default function AdminLogin() {
 
     // Secure authentication sequence
     setTimeout(() => {
-      if (password === 'runwayxrealflow') {
+      if (password === 'ufaslumzick@123') {
         const oneHourFromNow = Date.now() + 60 * 60 * 1000; // 1-hour session lifetime
         localStorage.setItem('adminAuth', 'true');
         localStorage.setItem('adminAuthExpiry', oneHourFromNow.toString());
